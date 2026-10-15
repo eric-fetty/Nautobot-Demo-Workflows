@@ -17,4 +17,4 @@ actions:
     name: Create User Log
     script: scripts/create_user_log.py
     with:
-      comments: {{ inputs.comments }}
+      comments: "{{ inputs.comments }}"
