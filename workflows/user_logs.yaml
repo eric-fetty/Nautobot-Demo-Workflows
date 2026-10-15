@@ -5,7 +5,7 @@ description: Create user logs for the user
 category: "Examples"
 manual_duration_minutes: 10
 enabled: true
-approval_required: true
+requires_approval: true
 inputs:
   - key: comments
     label: Comments
