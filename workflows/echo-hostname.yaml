@@ -1,0 +1,21 @@
+---
+version: 1
+key: echo-hostname
+name: Echo Hostname
+description: >
+  Non-destructive getting-started workflow from the Workflow Engine docs.
+  Returns the hostname you enter without changing Nautobot inventory.
+category: Examples
+enabled: true
+manual_duration_minutes: 5
+inputs:
+  - key: hostname
+    label: Hostname
+    type: string
+    required: true
+actions:
+  - type: nautobot
+    name: Echo Hostname
+    script: scripts/echo_hostname.py
+    with:
+      hostname: "{{ inputs.hostname }}"
