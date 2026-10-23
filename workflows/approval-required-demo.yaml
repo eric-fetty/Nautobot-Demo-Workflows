@@ -1,24 +1,41 @@
----
-version: 1
+# Managed by Nautobot Workflow Engine: http://localhost/plugins/workflow-engine/workflows/approval-required-demo/builder/
+# Edits here are imported into Nautobot on the next repository sync (latest change wins).
 key: approval-required-demo
 name: Approval Required Demo
-description: >
-  Example workflow that opts into Nautobot 3.2+ Approval Workflow Definitions.
-  After git sync, open Approvals → Workflow Definitions, find
-  "Workflow Engine: approval-required-demo", and add at least one stage before launching.
+inputs:
+- key: message
+  type: string
+  label: Message
+  default: Approved run
+  required: true
+- key: device
+  type: object
+  label: Device
+  model: dcim.Device
+  filter:
+    query:
+      status__name: Active
+  required: true
+- key: reboot
+  type: boolean
+  label: Reboot
+actions:
+- name: echo
+  type: nautobot
+  with:
+    hostname: '{{ inputs.message }}'
+  script: scripts/echo_hostname.py
+- name: reboot_device
+  type: nautobot
+  when: '{{ inputs.reboot == "" }}'
+  with:
+    hostname: '{{ inputs.device.name }}'
+  label: Reboot Device
+  script: scripts/echo_hostname.py
+  monitor: false
+version: 1
 category: Examples
-enabled: true
+description: |
+  Example workflow that opts into Nautobot 3.2+ Approval Workflow Definitions. After git sync, open Approvals → Workflow Definitions, find "Workflow Engine: approval-required-demo", and add at least one stage before launching.
 approval_required: true
 manual_duration_minutes: 5
-inputs:
-  - key: message
-    label: Message
-    type: string
-    required: true
-    default: "Approved run"
-actions:
-  - type: nautobot
-    name: echo
-    script: scripts/echo_hostname.py
-    with:
-      hostname: "{{ inputs.message }}"
