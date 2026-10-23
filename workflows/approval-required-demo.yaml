@@ -23,7 +23,7 @@ actions:
 - name: echo
   type: nautobot
   with:
-    hostname: '{{ inputs.message }}'
+    hostname: '{{ inputs.device.name }}'
   script: scripts/echo_hostname.py
 - name: reboot_device
   type: nautobot
@@ -31,7 +31,7 @@ actions:
   with:
     hostname: '{{ inputs.device.name }}'
   label: Reboot Device
-  script: scripts/echo_hostname.py
+  script: scripts/reboot_device.py
   monitor: false
 version: 1
 category: Examples
