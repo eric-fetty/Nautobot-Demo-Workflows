@@ -1,0 +1,20 @@
+# Managed by Nautobot Workflow Engine: http://localhost/plugins/workflow-engine/workflows/create_user_logs/builder/
+# Edits here are imported into Nautobot on the next repository sync (latest change wins).
+key: create_user_logs
+name: Create User Logs
+inputs:
+- key: comments
+  type: string
+  label: Comments
+  required: true
+actions:
+- name: Create User Log
+  type: nautobot
+  with:
+    comments: '{{ inputs.comments }}'
+  script: scripts/create_user_log.py
+version: 1
+category: Examples
+description: Create user logs for the user
+approval_required: true
+manual_duration_minutes: 10
