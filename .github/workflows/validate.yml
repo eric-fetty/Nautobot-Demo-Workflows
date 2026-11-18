@@ -1,0 +1,38 @@
+---
+name: Validate workflows
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out examples repository
+        uses: actions/checkout@v4
+
+      - name: Check out Workflow Engine (develop)
+        uses: actions/checkout@v4
+        with:
+          repository: eric-fetty/Nautobot_Workflow_Engine
+          ref: develop
+          path: plugin
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validator dependencies
+        run: pip install pyyaml jsonschema jinja2
+
+      - name: Validate workflow YAML
+        env:
+          PLUGIN_SRC: ${{ github.workspace }}/plugin
+        run: python ci/validate_workflows.py

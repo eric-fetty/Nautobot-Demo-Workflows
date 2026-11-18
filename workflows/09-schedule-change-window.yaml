@@ -1,0 +1,44 @@
+---
+key: 09-schedule-change-window
+name: "09. Schedule inside a change window"
+description: >
+  Book a planned change for later, or inside the window of a ServiceNow
+  change ticket when the lab ServiceNow (demo) integration is present.
+  Nothing in inventory is changed. If you have no ServiceNow, use
+  Schedule for later on the launch form.
+category: Examples
+manual_duration_minutes: 10
+inputs:
+{% include "templates/inputs/standard_change_inputs.yaml" %}
+  - key: summary
+    label: Summary
+    type: string
+    required: true
+    placeholder: Implement VLAN 110 during the approved window
+    help_text: A short description of the work to run at the scheduled time.
+  - key: location
+    label: Location
+    type: object
+    model: dcim.Location
+    required: false
+    help_text: Optional. Included in the plan so later operators can see the site.
+    filter:
+      query:
+        status__name: Active
+schedule:
+  servicenow:
+    integration_name: "ServiceNow (demo)"
+    change_input_key: change_ticket
+    allowed_states:
+      - Scheduled
+      - Implement
+    timezone: America/Chicago
+    require_approved: true
+actions:
+  - type: nautobot
+    name: echo_change_ticket
+    label: Record the scheduled change
+    script: scripts/echo_change_ticket.py
+    with:
+      change_ticket: "{{ inputs.change_ticket }}"
+      summary: "{{ inputs.summary }}"

@@ -1,0 +1,10 @@
+  - key: change_ticket
+    label: Change ticket
+    type: string
+    required: true
+    placeholder: CHG0031245
+    help_text: The approved change number for this work, like CHG0031245.
+    validators:
+      - regex: "^CHG\\d{7}$"
+        message: Use the change number, like CHG0031245.
+        flags: ["IGNORECASE"]

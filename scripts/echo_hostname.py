@@ -1,4 +1,4 @@
-"""Example action script that returns the hostname it receives."""
+"""Return the hostname it receives without changing inventory."""
 
 
 def run(params):

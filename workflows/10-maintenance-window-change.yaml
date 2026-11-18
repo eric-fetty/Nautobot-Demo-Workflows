@@ -1,0 +1,107 @@
+---
+key: 10-maintenance-window-change
+name: "10. Maintenance-window change"
+description: >
+  Capstone example. Plan VLAN work at a location during an approved
+  maintenance window, with a reachability check first and a journal or
+  backout note at the end. Leave Apply off to only plan. Approval and a
+  ServiceNow change window are declared; in a lab without ServiceNow, use
+  Schedule for later after you add an approval stage.
+category: Examples
+approval_required: true
+manual_duration_minutes: 45
+inputs:
+  - key: location
+    label: Location
+    type: object
+    model: dcim.Location
+    required: true
+    filter:
+      query:
+        status__name: Active
+  - key: devices
+    label: Devices
+    type: multiobject
+    model: dcim.Device
+    required: true
+    depends_on: ["location"]
+    help_text: Switches in the change that should be reachable before work starts.
+    filter:
+      query:
+        location: "{{ inputs.location.id }}"
+        status__name: Active
+  - key: vlans
+    label: VLANs
+    type: listdict
+    required: true
+    min_rows: 1
+    max_rows: 50
+    help_text: One row per VLAN. You can import a CSV file or paste rows from a spreadsheet.
+    columns:
+      - key: vid
+        label: VLAN ID
+        type: integer
+        required: true
+        unique: true
+        min_value: 1
+        max_value: 4094
+      - key: name
+        label: Name
+        type: string
+        required: true
+        validators:
+          - regex: "^[a-z0-9-]+$"
+            message: Use lowercase letters, numbers, and dashes.
+{% include "templates/inputs/standard_change_inputs.yaml" %}
+  - key: apply
+    label: Apply these changes in Nautobot
+    type: boolean
+    default: false
+    help_text: Leave off to only plan. Turn on to create the VLANs in this lab Nautobot and add a journal entry when the work succeeds. Do not use this in production.
+schedule:
+  servicenow:
+    integration_name: "ServiceNow (demo)"
+    change_input_key: change_ticket
+    allowed_states:
+      - Scheduled
+      - Implement
+    timezone: America/Chicago
+    require_approved: true
+pre_actions:
+  - type: nautobot
+    name: check_reachable
+    label: Check the first device is reachable
+    script: scripts/check_reachability.py
+    with:
+      device: "{{ inputs.devices[0] if inputs.devices else None }}"
+      attempts: 3
+actions:
+  - type: nautobot
+    name: plan_or_apply
+    label: Plan or apply the maintenance change
+    script: scripts/plan_or_apply_maintenance.py
+    when: "{{ results.check_reachable is defined and results.check_reachable.status == 'success' }}"
+    with:
+      location: "{{ inputs.location.id }}"
+      devices: "{{ inputs.devices }}"
+      vlans: "{{ inputs.vlans }}"
+      change_ticket: "{{ inputs.change_ticket }}"
+      apply: "{{ inputs.apply }}"
+post_actions:
+  - type: nautobot
+    name: journal_entry
+    label: Add a journal entry
+    script: scripts/add_journal_entry.py
+    when: "{{ inputs.apply and results.plan_or_apply is defined and results.plan_or_apply.status == 'success' }}"
+    with:
+      device: "{{ inputs.devices[0] if inputs.devices else None }}"
+      message: "Maintenance {{ inputs.change_ticket }} applied at {{ inputs.location.name }}."
+  - type: nautobot
+    name: plan_backout
+    label: Record a backout plan
+    script: scripts/plan_backout.py
+    when: "{{ results.plan_or_apply is defined and results.plan_or_apply.status == 'failed' }}"
+    with:
+      change_ticket: "{{ inputs.change_ticket }}"
+      location: "{{ inputs.location.name }}"
+      reason: "{{ results.plan_or_apply.error if results.plan_or_apply is defined else 'The main step did not succeed.' }}"
