@@ -17,6 +17,9 @@ from nautobot.extras.models import ExternalIntegration, Role, Status
 from nautobot.ipam.models import IPAddress, Namespace, Prefix, VLANGroup
 
 
+# Nautobot groups Jobs by the module-level ``name``; Meta.grouping is not used.
+name = "Workflow Engine examples"
+
 LAB_ONLY = True
 SERVICENOW_INTEGRATION_NAME = "ServiceNow (demo)"
 
@@ -84,7 +87,8 @@ def seed(log=None):
         )
         _log(log, f"{'Created' if prefix_created else 'Reused'} prefix {prefix}")
         try:
-            VLANGroup.objects.get_or_create(name=f"{code} lab VLANs", defaults={"location": location})
+            group, group_created = VLANGroup.objects.get_or_create(name=f"{code} lab VLANs", defaults={"location": location})
+            _log(log, f"{'Created' if group_created else 'Reused'} VLAN group {group.name}")
         except Exception as exc:  # Model fields vary slightly across Nautobot 3.x releases.
             _log(log, f"Skipped VLAN group for {code}: {exc}")
 
@@ -146,7 +150,6 @@ class SeedWorkflowEngineLab(Job):
             "VLAN groups, and a fake ServiceNow (demo) External Integration. "
             "Safe to run again. Do not run this in production."
         )
-        grouping = "Workflow Engine examples"
 
     def run(self):
         """Seed the lab inventory."""

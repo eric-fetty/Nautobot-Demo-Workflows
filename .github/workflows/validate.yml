@@ -36,3 +36,6 @@ jobs:
         env:
           PLUGIN_SRC: ${{ github.workspace }}/plugin
         run: python ci/validate_workflows.py
+
+      - name: Check script parameter helpers
+        run: python ci/test_params.py

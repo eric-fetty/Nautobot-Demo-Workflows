@@ -11,13 +11,14 @@ PARAMETERS = {
 
 def run(params):
     """Return the planned port change. Update the interface description only when apply is true."""
+    from scripts.lib.params import as_bool
     from nautobot.dcim.models import Device, Interface
 
     device = Device.objects.get(pk=params["device"])
     iface = Interface.objects.get(pk=params["interface"])
     description = str(params.get("description") or "").strip()
     vlan_id = int(params["vlan_id"])
-    apply = bool(params.get("apply"))
+    apply = as_bool(params.get("apply"))
     print(f"Planned turn-up of {device.name} {iface.name} as access VLAN {vlan_id}: {description}")
 
     previous = iface.description or ""
