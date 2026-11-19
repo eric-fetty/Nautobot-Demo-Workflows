@@ -36,7 +36,6 @@ inputs:
     filter:
       query:
         device_id: "{{ inputs.device.id }}"
-        mgmt_only: "true"
   - key: preferred_prefix
     label: Preferred management prefix
     type: object
