@@ -11,16 +11,17 @@ PARAMETERS = {
 
 def run(params):
     """Plan VLAN work at a location. Create lab VLANs only when apply is true."""
+    from scripts.lib.params import as_bool, as_list
     from nautobot.dcim.models import Device, Location
     from nautobot.extras.models import Status
     from nautobot.ipam.models import VLAN
 
     location = Location.objects.get(pk=params["location"])
-    device_ids = params.get("devices") or []
+    device_ids = as_list(params.get("devices"))
     devices = list(Device.objects.filter(pk__in=device_ids).order_by("name"))
-    rows = list(params.get("vlans") or [])
+    rows = as_list(params.get("vlans"))
     ticket = str(params.get("change_ticket") or "").strip()
-    apply = bool(params.get("apply"))
+    apply = as_bool(params.get("apply"))
     planned = [{"vid": int(row["vid"]), "name": str(row["name"]).strip()} for row in rows]
     names = [device.name for device in devices]
     print(f"Maintenance {ticket}: planned {len(planned)} VLAN(s) at {location.name} on {names}.")

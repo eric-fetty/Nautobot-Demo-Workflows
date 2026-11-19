@@ -10,12 +10,13 @@ PARAMETERS = {
 
 def run(params):
     """Return the planned reboot. This script does not contact or reboot the device."""
+    from scripts.lib.params import as_bool
     from nautobot.dcim.models import Device
 
     device = Device.objects.get(pk=params["device"])
     reboot_type = params.get("reboot_type") or "soft"
     ticket = str(params.get("change_ticket") or "").strip()
-    wait = bool(params.get("wait_for_recovery", True))
+    wait = as_bool(params.get("wait_for_recovery"), default=True)
     print(f"Planned {reboot_type} reboot of {device.name} under {ticket}.")
     print("This is a plan only. The device was not contacted or rebooted.")
     if wait:

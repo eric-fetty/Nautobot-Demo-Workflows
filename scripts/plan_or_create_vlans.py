@@ -14,18 +14,19 @@ PARAMETERS = {
 
 def run(params):
     """Return a plan for each VLAN row. Create lab VLANs only when apply is true."""
+    from scripts.lib.params import as_bool, as_list, as_text
     from nautobot.dcim.models import Device, Location
     from nautobot.extras.models import Status, Tag
     from nautobot.ipam.models import VLAN
 
     location = Location.objects.get(pk=params["location"])
-    rows = list(params.get("vlans") or [])
-    apply = bool(params.get("apply"))
-    status_name = params.get("status") or "active"
-    tag_names = list(params.get("tags") or [])
-    trunk_ports = list(params.get("trunk_ports") or [])
+    rows = as_list(params.get("vlans"))
+    apply = as_bool(params.get("apply"))
+    status_name = as_text(params.get("status")) or "active"
+    tag_names = as_list(params.get("tags"))
+    trunk_ports = as_list(params.get("trunk_ports"))
     mtu = int(params.get("mtu") or 1500)
-    switch_ids = params.get("switches") or []
+    switch_ids = as_list(params.get("switches"))
     switch_names = []
     if switch_ids:
         switch_names = list(Device.objects.filter(pk__in=switch_ids).values_list("name", flat=True))

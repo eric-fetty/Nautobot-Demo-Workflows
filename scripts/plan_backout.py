@@ -9,9 +9,10 @@ PARAMETERS = {
 
 def run(params):
     """Return a backout note. This script does not revert live network state."""
+    from scripts.lib.params import as_text
     ticket = str(params.get("change_ticket") or "").strip()
-    location = str(params.get("location") or "").strip()
-    reason = str(params.get("reason") or "The main step did not succeed.").strip()
+    location = as_text(params.get("location"))
+    reason = as_text(params.get("reason")) or "The main step did not succeed."
     message = f"Backout plan for {ticket} at {location or 'the site'}: leave devices unchanged and re-run after the failure is understood. Reason: {reason}"
     print(message)
     return {"change_ticket": ticket, "message": message, "applied": False}
