@@ -1,0 +1,25 @@
+---
+key: 05-record-planned-change
+name: "05. Record a planned change"
+description: >
+  Records a planned change ticket and a short summary. The change-ticket
+  field comes from a shared Jinja include, so later examples can reuse the
+  same input. Nothing in inventory is changed.
+category: Examples
+manual_duration_minutes: 5
+inputs:
+{% include "templates/inputs/standard_change_inputs.yaml" %}
+  - key: summary
+    label: Summary
+    type: string
+    required: true
+    placeholder: Add VLAN 110 on the AMS01 access switches
+    help_text: A short description of the planned work.
+actions:
+  - type: nautobot
+    name: echo_change_ticket
+    label: Record the planned change
+    script: scripts/echo_change_ticket.py
+    with:
+      change_ticket: "{{ inputs.change_ticket }}"
+      summary: "{{ inputs.summary }}"

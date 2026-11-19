@@ -1,0 +1,62 @@
+---
+key: 08-approve-maintenance-reboot
+name: "08. Approve a maintenance reboot"
+description: >
+  Plans a maintenance reboot after Nautobot approval. The device is never
+  contacted or rebooted. After you sync this workflow, open Approvals, find
+  "Workflow Engine: 08-approve-maintenance-reboot", and add at least one
+  approval stage before you launch.
+category: Examples
+approval_required: true
+manual_duration_minutes: 25
+inputs:
+  - key: location
+    label: Location
+    type: object
+    model: dcim.Location
+    required: true
+    filter:
+      query:
+        status__name: Active
+  - key: device
+    label: Device
+    type: object
+    model: dcim.Device
+    required: true
+    depends_on: ["location"]
+    help_text: Only active devices at the chosen location are listed.
+    filter:
+      query:
+        location: "{{ inputs.location.id }}"
+        status__name: Active
+  - key: reboot_type
+    label: Reboot type
+    type: choice
+    required: true
+    default: soft
+    choices:
+      - {value: soft, label: Soft reload}
+      - {value: hard, label: Hard power cycle}
+  - key: confirm_power_cycle
+    label: I understand this would cut power to the device
+    type: boolean
+    required: true
+    show_if:
+      reboot_type: hard
+  - key: wait_for_recovery
+    label: Wait for the device to come back online
+    type: boolean
+    default: true
+    help_text: A real change would check reachability after the reboot. This example only records the choice.
+{% include "templates/inputs/standard_change_inputs.yaml" %}
+actions:
+  - type: nautobot
+    name: plan_reboot
+    label: Plan the maintenance reboot
+    script: scripts/plan_maintenance_reboot.py
+    when: "{{ inputs.reboot_type != 'hard' or inputs.confirm_power_cycle }}"
+    with:
+      device: "{{ inputs.device.id }}"
+      reboot_type: "{{ inputs.reboot_type }}"
+      change_ticket: "{{ inputs.change_ticket }}"
+      wait_for_recovery: "{{ inputs.wait_for_recovery }}"
