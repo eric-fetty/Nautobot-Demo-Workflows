@@ -1,0 +1,92 @@
+---
+key: 13-upgrade-with-pre-post-checks
+name: "13. Software upgrade with pre and post checks"
+description: >
+  Record a baseline of a switch (enabled interfaces, cabled neighbors, VLANs),
+  run a simulated software upgrade, and compare the switch with the baseline.
+  The last two steps branch on the post-check's return value: a clean
+  close-out when nothing drifted, or a backout note that lists what changed.
+category: Examples
+manual_duration_minutes: 60
+inputs:
+  - key: location
+    label: Location
+    type: object
+    model: dcim.Location
+    required: true
+    filter:
+      query:
+        status__name: Active
+  - key: device
+    label: Device
+    type: object
+    model: dcim.Device
+    required: true
+    depends_on: ["location"]
+    filter:
+      query:
+        location: "{{ inputs.location.id }}"
+        status__name: Active
+  - key: target_version
+    label: Target software version
+    type: string
+    required: true
+    default: 4.32.2F
+    placeholder: 4.32.2F
+    validators:
+      - regex: "^[A-Za-z0-9._()-]{1,40}$"
+        message: Use a version string such as 4.32.2F or 17.12.4.
+  - key: simulate_drift
+    label: Simulate drift after the upgrade
+    type: boolean
+    default: false
+    help_text: Turn on to make the post-check find an uplink down, a lost neighbor, and a missing VLAN, so the backout step runs.
+  - key: apply
+    label: Apply these changes in Nautobot
+    type: boolean
+    default: false
+    help_text: Leave off to only plan. Turn on to add notes on the device in this lab Nautobot. The device is never contacted.
+pre_actions:
+  - type: nautobot
+    name: precheck
+    label: Record the pre-upgrade baseline
+    script: scripts/collect_device_baseline.py
+    with:
+      device: "{{ inputs.device.id }}"
+actions:
+  - type: nautobot
+    name: upgrade
+    label: Upgrade the software (simulated)
+    script: scripts/simulate_upgrade.py
+    with:
+      device: "{{ inputs.device.id }}"
+      target_version: "{{ inputs.target_version }}"
+      apply: "{{ inputs.apply }}"
+  - type: nautobot
+    name: postcheck
+    label: Compare with the baseline
+    script: scripts/compare_device_baseline.py
+    when: "{{ results.upgrade is defined and results.upgrade.status == 'success' }}"
+    with:
+      device: "{{ inputs.device.id }}"
+      baseline: "{{ results.precheck.return_value }}"
+      simulate_drift: "{{ inputs.simulate_drift }}"
+  - type: nautobot
+    name: close_success
+    label: Close out (only if nothing drifted)
+    script: scripts/record_change_note.py
+    when: "{{ results.postcheck is defined and results.postcheck.status == 'success' and results.postcheck.return_value.drift == 0 }}"
+    with:
+      device: "{{ inputs.device.id }}"
+      message: "Upgrade to {{ inputs.target_version }} verified: the post-check matches the baseline ({{ results.precheck.return_value.interfaces_enabled }} enabled interfaces, {{ results.precheck.return_value.interfaces_cabled }} neighbors)."
+      apply: "{{ inputs.apply }}"
+  - type: nautobot
+    name: open_backout
+    label: Open a backout (only if the post-check found drift)
+    script: scripts/record_change_note.py
+    when: "{{ results.postcheck is defined and results.postcheck.status == 'success' and results.postcheck.return_value.drift > 0 }}"
+    with:
+      device: "{{ inputs.device.id }}"
+      message: "Upgrade to {{ inputs.target_version }} needs backout: the post-check found {{ results.postcheck.return_value.drift }} difference(s) from the baseline."
+      details: "{{ results.postcheck.return_value.differences }}"
+      apply: "{{ inputs.apply }}"

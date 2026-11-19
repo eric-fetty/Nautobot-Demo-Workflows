@@ -39,3 +39,6 @@ jobs:
 
       - name: Check script parameter helpers
         run: python ci/test_params.py
+
+      - name: Check examples 11-13 helpers and branches
+        run: python ci/test_conditional_examples.py

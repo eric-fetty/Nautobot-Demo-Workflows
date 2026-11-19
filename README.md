@@ -4,7 +4,7 @@ Example workflows for [Nautobot Workflow Engine](https://github.com/eric-fetty/N
 
 This is the canonical examples repository. Use it to get a lab or proof of concept running quickly, and to learn the plugin one feature at a time. The plugin's [Examples tutorial](https://github.com/eric-fetty/Nautobot_Workflow_Engine/blob/develop/docs/user/examples_tutorial.md) walks the same ladder with screenshots of the UI.
 
-The first five examples never change Nautobot inventory. Examples 6–10 have an **Apply these changes in Nautobot** switch that defaults to off. Leave it off to only plan. Turn it on only in a lab, to make small inventory changes such as creating VLANs or adding a journal entry. None of these examples contact or reboot a live network device, and none of them require AWX.
+The first five examples never change Nautobot inventory. Examples 6–13 have an **Apply these changes in Nautobot** switch that defaults to off. Leave it off to only plan. Turn it on only in a lab, to make small inventory changes such as creating VLANs or adding a journal entry. None of these examples contact or reboot a live network device, and none of them require AWX.
 
 ## The ladder
 
@@ -22,6 +22,9 @@ Work through the examples in order. Each one adds a feature and points to the ne
 | 8 | [Approve a maintenance reboot](workflows/08-approve-maintenance-reboot.md) | `08-approve-maintenance-reboot` | Nautobot 3.2 approval definitions (plan only, no reboot) |
 | 9 | [Schedule inside a change window](workflows/09-schedule-change-window.md) | `09-schedule-change-window` | Schedule for later, ServiceNow change window, cancel, Run Again |
 | 10 | [Maintenance-window change](workflows/10-maintenance-window-change.md) | `10-maintenance-window-change` | Capstone: table, pre/post, approval, change window, optional apply and backout |
+| 11 | [Turn up a port with verify and rollback](workflows/11-turn-up-with-rollback.md) | `11-turn-up-with-rollback` | Rollback only if a step failed, close-out only if it succeeded, reuse a snapshot's return value |
+| 12 | [Next free management IP with a fallback prefix](workflows/12-next-free-ip-with-fallback.md) | `12-next-free-ip-with-fallback` | A fallback step, an `or` condition, choosing a value from whichever step worked |
+| 13 | [Software upgrade with pre and post checks](workflows/13-upgrade-with-pre-post-checks.md) | `13-upgrade-with-pre-post-checks` | Branch on a returned value (`drift == 0`) instead of a status |
 
 ## Lab setup
 
@@ -32,19 +35,22 @@ You need Nautobot 3.x with [Nautobot Workflow Engine](https://github.com/eric-fe
 1. Add a **Git Repository** pointing at this repo (or a fork or clone Nautobot can reach), on the branch you want to use.
 2. Under **Provides**, enable the Workflow Engine content (workflows). To run the lab seed as a Job, also enable **jobs**.
 3. Synchronize the repository.
-4. Confirm the ten **Examples** workflows appear on the Workflows list.
+4. Confirm the thirteen **Examples** workflows appear on the Workflows list.
 
 If you enable jobs, also add an empty `__init__.py` at the repository root (already present here) so Nautobot can import the Job module. Jobs from Git are disabled until you enable them.
 
 ### 2. Seed the lab inventory
 
-Examples 3 and 6–10 need a few locations, devices, interfaces, and prefixes. The seed is idempotent and labeled lab-only. **Do not run it in production.**
+Examples 3 and 6–13 need a few locations, devices, interfaces, and prefixes. The seed is idempotent and labeled lab-only. **Do not run it in production.**
 
 It creates:
 
 - Locations **AMS01** and **NYC02**
 - Access and distribution switches at each site, with `Management1`, `Ethernet1/1`, `Ethernet1/2`, and `Ethernet1/48`
 - Prefixes `10.20.0.0/16` and `10.21.0.0/16`
+- VLANs 110 (`users-110`) and 120 (`voice-120`) at each site, for example 11
+- Management prefixes for example 12: `10.20.255.0/29` and `10.21.255.0/29`, deliberately full, and fallbacks `10.20.254.0/24` and `10.21.254.0/24`
+- An uplink cable from each site's `acc-sw01` to `dist-sw01` on `Ethernet1/48`, for example 13
 - A fake External Integration named **ServiceNow (demo)** so example 9 can declare a change window. It does not talk to a real ServiceNow.
 
 **Option A — Job (easiest when Jobs content is enabled)**
@@ -79,11 +85,14 @@ Grant operators the ready-made **Workflow Engine: Run workflows** and **Workflow
 
 ```text
 workflows/                 # Workflow YAML (workflow_dir)
-  01-echo-hostname.yaml    # … through 10-maintenance-window-change.yaml
+  01-echo-hostname.yaml    # … through 13-upgrade-with-pre-post-checks.yaml
   01-echo-hostname.md      # Short "what you'll learn / how to run / next" notes
   templates/inputs/
     standard_change_inputs.yaml   # Shared change-ticket fragment
 scripts/                   # Nautobot action scripts (def run(params))
+  lib/params.py            # Read rendered step values as flags, lists, and dicts
+  lib/interface_state.py   # Snapshot, compare, and restore an interface (example 11)
+  lib/device_state.py      # Pre/post-check baselines (example 13)
   lib/text_helpers.py
 jobs/                      # Lab-only seed Job
   seed_lab.py
