@@ -42,3 +42,6 @@ jobs:
 
       - name: Check examples 11-13 helpers and branches
         run: python ci/test_conditional_examples.py
+
+      - name: Check the validation rules in examples 02 and 06
+        run: python ci/test_validation_examples.py

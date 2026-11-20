@@ -4,7 +4,7 @@ name: "02. Reserve a VLAN ID"
 description: >
   Plan a VLAN reservation with a validated ID and name. Nothing is created
   in Nautobot. Use this to learn whole-number limits, help text, placeholders,
-  and regex validation.
+  and validation rules, including the builder's presets.
 category: Examples
 manual_duration_minutes: 5
 inputs:
@@ -21,10 +21,23 @@ inputs:
     type: string
     required: true
     placeholder: users-floor-2
-    help_text: Lowercase letters, numbers, and dashes only.
+    help_text: Up to 32 lowercase letters, numbers, and dashes.
     validators:
+      # The builder's "VLAN name" preset: 1 to 32 characters, no spaces.
+      - regex: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$"
+        message: Use 1 to 32 letters, numbers, hyphens, underscores, or dots, starting with a letter or number.
+      # A site convention on top of the preset: lowercase and dashes only.
       - regex: "^[a-z0-9-]+$"
-        message: Use lowercase letters, numbers, and dashes, for example users-floor-2.
+        message: Our VLAN names are lowercase with dashes, for example users-floor-2.
+  - key: change_ticket
+    label: Change ticket
+    type: string
+    placeholder: CHG0012345
+    help_text: Optional. The ServiceNow change this VLAN belongs to.
+    validators:
+      # The builder's "ServiceNow change number" preset. IGNORECASE also accepts chg0012345.
+      - regex: "^CHG[0-9]{7}$"
+        message: Enter a ServiceNow change number, like CHG0012345.
         flags: ["IGNORECASE"]
 actions:
   - type: nautobot
@@ -34,3 +47,4 @@ actions:
     with:
       vid: "{{ inputs.vid }}"
       name: "{{ inputs.name }}"
+      change_ticket: "{{ inputs.change_ticket }}"
