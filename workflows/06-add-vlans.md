@@ -5,6 +5,7 @@
 - A table input (`listdict`) with typed columns, unique VLAN IDs, and row limits.
 - **Download template** and **Import CSV** on the launch form. The file is read in your browser and is not stored.
 - A list of text (extra trunk ports), a whole-number MTU, and a pick-many tags field.
+- Validation rules on a table column and on a list. Every **Name** cell must pass the builder's **VLAN name** preset and the lowercase convention. Every **Extra trunk ports** line must pass the **Interface name** preset and an Ethernet-or-Port-Channel rule. Errors name the row or line, for example *Line 2: Trunk ports must be Ethernet or Port-Channel interfaces.*
 - A several-objects picker for switches at the chosen location.
 - An **Apply these changes in Nautobot** switch that defaults to off.
 
@@ -15,7 +16,7 @@ With Apply off, the script only reports the plan. With Apply on, it creates (or 
 1. Run the [lab seed](../README.md#lab-setup) if you have not already.
 2. Choose **Run** on **06. Add VLANs**.
 3. Pick **AMS01** and one or two switches.
-4. Add a row with VLAN ID `110` and name `users-floor-2`, or import a small CSV.
+4. Add a row with VLAN ID `110` and name `users-floor-2`, or import a small CSV. Try a name such as `Users Floor 2` or a trunk port such as `Vlan10` to see the rules reject it.
 5. Leave **Apply these changes in Nautobot** off, run now, and read the plan.
 6. Optionally run again with Apply on and confirm the VLANs appear under IPAM.
 

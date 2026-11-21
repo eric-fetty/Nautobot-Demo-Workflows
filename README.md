@@ -13,11 +13,11 @@ Work through the examples in order. Each one adds a feature and points to the ne
 | # | Workflow | Key | What you'll learn |
 | --- | --- | --- | --- |
 | 1 | [Echo a hostname](workflows/01-echo-hostname.md) | `01-echo-hostname` | Launch form, Run now, run details and logs |
-| 2 | [Reserve a VLAN ID](workflows/02-reserve-vlan-id.md) | `02-reserve-vlan-id` | Whole-number limits, help text, placeholders, regex validation |
+| 2 | [Reserve a VLAN ID](workflows/02-reserve-vlan-id.md) | `02-reserve-vlan-id` | Whole-number limits, help text, placeholders, validation rules and presets |
 | 3 | [Plan an interface description](workflows/03-plan-interface-description.md) | `03-plan-interface-description` | Object pickers, `depends_on`, `show_if`, a step condition |
 | 4 | [Normalize a hostname](workflows/04-normalize-hostname.md) | `04-normalize-hostname` | Repo-backed Jinja filters and `scripts/lib` helpers |
 | 5 | [Record a planned change](workflows/05-record-planned-change.md) | `05-record-planned-change` | Reusable inputs with `{% include %}` |
-| 6 | [Add VLANs](workflows/06-add-vlans.md) | `06-add-vlans` | Table + CSV import, lists, several objects, optional apply |
+| 6 | [Add VLANs](workflows/06-add-vlans.md) | `06-add-vlans` | Table + CSV import, lists, several objects, column and per-line validation, optional apply |
 | 7 | [Turn up a port](workflows/07-turn-up-a-port.md) | `07-turn-up-a-port` | Before / main / always-after steps, conditions on earlier results |
 | 8 | [Approve a maintenance reboot](workflows/08-approve-maintenance-reboot.md) | `08-approve-maintenance-reboot` | Nautobot 3.2 approval definitions (plan only, no reboot) |
 | 9 | [Schedule inside a change window](workflows/09-schedule-change-window.md) | `09-schedule-change-window` | Schedule for later, ServiceNow change window, cancel, Run Again |

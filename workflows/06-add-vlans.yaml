@@ -47,6 +47,9 @@ inputs:
         type: string
         required: true
         validators:
+          # The builder's "VLAN name" preset, then the site's lowercase convention.
+          - regex: "^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$"
+            message: Use 1 to 32 letters, numbers, hyphens, underscores, or dots, starting with a letter or number.
           - regex: "^[a-z0-9-]+$"
             message: Use lowercase letters, numbers, and dashes.
       - key: role
@@ -90,8 +93,12 @@ inputs:
     max_items: 8
     help_text: One interface per line. Leave this empty to use the uplinks only.
     validators:
-      - regex: "^(Ethernet|Port-Channel)\\d+(/\\d+)*$"
-        message: Use an interface name like Ethernet1/49.
+      # The builder's "Interface name" preset checks the shape of each line.
+      - regex: "^[A-Za-z][A-Za-z-]*[0-9]+(?:[/:][0-9]+)*(?:\\.[0-9]+)?$"
+        message: Use an interface name like Ethernet1/49 or Port-Channel10.
+      # A trunk can only be an Ethernet port or a port-channel on these switches.
+      - regex: "^(Ethernet|Port-Channel)"
+        message: Trunk ports must be Ethernet or Port-Channel interfaces.
         flags: ["IGNORECASE"]
   - key: apply
     label: Apply these changes in Nautobot
