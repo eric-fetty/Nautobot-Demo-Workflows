@@ -12,9 +12,9 @@ Do not run this in production.
 
 from django.contrib.contenttypes.models import ContentType
 from nautobot.apps.jobs import Job
-from nautobot.dcim.models import Device, DeviceType, Interface, Location, LocationType, Manufacturer, Platform
+from nautobot.dcim.models import Cable, Device, DeviceType, Interface, Location, LocationType, Manufacturer, Platform
 from nautobot.extras.models import ExternalIntegration, Role, Status
-from nautobot.ipam.models import IPAddress, Namespace, Prefix, VLANGroup
+from nautobot.ipam.models import VLAN, IPAddress, Namespace, Prefix, VLANGroup
 
 
 # Nautobot groups Jobs by the module-level ``name``; Meta.grouping is not used.
@@ -129,15 +129,67 @@ def seed(log=None):
                     device.save()
                 _log(log, f"{'Created' if created else 'Reused'} device {device.name}")
 
+    extras = _seed_conditional_examples(locations, namespace, active, log)
+
     summary = {
         "locations": sorted(locations),
         "devices": device_count,
         "servicenow_integration": integration.name,
         "vlan_groups": [f"{code} lab VLANs" for code in locations],
+        **extras,
         "lab_only": True,
     }
     _log(log, f"Lab seed complete: {summary}")
     return summary
+
+
+def _seed_conditional_examples(locations, namespace, active, log):
+    """Add the VLANs, management prefixes, and uplink cables that examples 11-13 use."""
+    vlans, prefixes, cables = [], [], []
+    for site_index, (code, location) in enumerate(locations.items()):
+        group = VLANGroup.objects.filter(name=f"{code} lab VLANs").first()
+        for vid, vlan_name in ((110, "users-110"), (120, "voice-120")):
+            # Example 6 can create the same VLAN IDs at a location; reuse those.
+            vlan = VLAN.objects.filter(vid=vid, locations=location).first()
+            if vlan is None:
+                vlan = VLAN.objects.create(
+                    vid=vid, name=vlan_name, status=active, location=location, vlan_group=group
+                )
+                _log(log, f"Created VLAN {vid} at {code}")
+            vlans.append(f"{code} {vlan.vid}")
+
+        # A /29 has six usable addresses. Fill them all so example 12's preferred prefix is full.
+        full, _ = Prefix.objects.get_or_create(
+            prefix=f"10.{20 + site_index}.255.0/29",
+            namespace=namespace,
+            defaults={"status": active, "description": f"{code} mgmt (lab: full on purpose)"},
+        )
+        for host in range(1, 7):
+            IPAddress.objects.get_or_create(
+                address=f"10.{20 + site_index}.255.{host}/29",
+                namespace=namespace,
+                defaults={"status": active, "description": "Lab filler so this prefix is full"},
+            )
+        fallback, _ = Prefix.objects.get_or_create(
+            prefix=f"10.{20 + site_index}.254.0/24",
+            namespace=namespace,
+            defaults={"status": active, "description": f"{code} mgmt fallback (lab)"},
+        )
+        prefixes.extend([str(full.prefix), str(fallback.prefix)])
+
+        # Cable the first access switch's uplink to the first distribution switch, for example 13's neighbor count.
+        access = Interface.objects.filter(device__name=f"{code.lower()}-acc-sw01", name="Ethernet1/48").first()
+        dist = Interface.objects.filter(device__name=f"{code.lower()}-dist-sw01", name="Ethernet1/48").first()
+        if access and dist and not access.cable_id and not dist.cable_id:
+            try:
+                connected = Status.objects.get(name="Connected")
+                Cable.objects.create(termination_a=access, termination_b=dist, status=connected)
+                _log(log, f"Cabled {access.device.name} {access.name} to {dist.device.name} {dist.name}")
+            except Exception as exc:  # Cable statuses vary by install; the examples still run without it.
+                _log(log, f"Skipped uplink cable at {code}: {exc}")
+        if access and access.cable_id:
+            cables.append(f"{access.device.name} {access.name}")
+    return {"example_vlans": vlans, "example_prefixes": prefixes, "example_cables": cables}
 
 
 class SeedWorkflowEngineLab(Job):
@@ -147,7 +199,8 @@ class SeedWorkflowEngineLab(Job):
         name = "Seed Workflow Engine lab data"
         description = (
             "LAB ONLY. Creates demo locations, devices, interfaces, prefixes, "
-            "VLAN groups, and a fake ServiceNow (demo) External Integration. "
+            "VLAN groups, VLANs 110 and 120, an uplink cable per site, and a fake "
+            "ServiceNow (demo) External Integration. "
             "Safe to run again. Do not run this in production."
         )
 

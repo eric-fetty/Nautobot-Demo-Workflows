@@ -1,0 +1,111 @@
+---
+key: 11-turn-up-with-rollback
+name: "11. Turn up a port with verify and rollback"
+description: >
+  Snapshot an access port, apply the turn-up, and verify it. If verification
+  fails, a rollback step restores the port from the snapshot taken by the
+  first step. If verification passes, a close-out step marks the port Active
+  and adds a note. Simulate a failed verification to see the rollback path.
+category: Examples
+manual_duration_minutes: 25
+inputs:
+  - key: location
+    label: Location
+    type: object
+    model: dcim.Location
+    required: true
+    filter:
+      query:
+        status__name: Active
+  - key: device
+    label: Device
+    type: object
+    model: dcim.Device
+    required: true
+    depends_on: ["location"]
+    filter:
+      query:
+        location: "{{ inputs.location.id }}"
+        status__name: Active
+  - key: interface
+    label: Interface
+    type: object
+    model: dcim.Interface
+    required: true
+    depends_on: ["device"]
+    help_text: Pick an access port such as Ethernet1/2. Its current settings are saved first so they can be restored.
+    filter:
+      query:
+        device_id: "{{ inputs.device.id }}"
+  - key: vlan_id
+    label: Access VLAN
+    type: integer
+    required: true
+    min_value: 1
+    max_value: 4094
+    default: 110
+    help_text: The VLAN must already exist at the location. The lab seed creates VLAN 110 and 120 at each site.
+  - key: description
+    label: Interface description
+    type: string
+    required: true
+    placeholder: user access floor 3
+    validators:
+      - regex: "^[A-Za-z0-9 ._/-]{1,80}$"
+        message: Use letters, numbers, spaces, and . _ - / (max 80 characters).
+  - key: simulate_failure
+    label: Simulate a failed verification
+    type: boolean
+    default: false
+    help_text: Turn on to make the verify step fail, as if the link stayed down, so the rollback step runs.
+  - key: apply
+    label: Apply these changes in Nautobot
+    type: boolean
+    default: false
+    help_text: Leave off to only plan. Turn on to change the interface in this lab Nautobot (and restore it on rollback). Do not use this in production.
+actions:
+  - type: nautobot
+    name: snapshot
+    label: Snapshot the interface
+    script: scripts/snapshot_interface.py
+    with:
+      interface: "{{ inputs.interface.id }}"
+  - type: nautobot
+    name: apply_change
+    label: Apply the turn-up
+    script: scripts/apply_interface_turn_up.py
+    when: "{{ results.snapshot is defined and results.snapshot.status == 'success' }}"
+    with:
+      interface: "{{ inputs.interface.id }}"
+      vlan_id: "{{ inputs.vlan_id }}"
+      description: "{{ inputs.description }}"
+      apply: "{{ inputs.apply }}"
+  - type: nautobot
+    name: verify
+    label: Verify the interface
+    script: scripts/verify_interface_turn_up.py
+    when: "{{ results.apply_change is defined and results.apply_change.status == 'success' }}"
+    with:
+      interface: "{{ inputs.interface.id }}"
+      desired: "{{ results.apply_change.return_value.desired }}"
+      apply: "{{ inputs.apply }}"
+      simulate_failure: "{{ inputs.simulate_failure }}"
+  - type: nautobot
+    name: rollback
+    label: Roll back from the snapshot (only if the change failed)
+    script: scripts/rollback_interface.py
+    when: "{{ results.snapshot is defined and results.snapshot.status == 'success' and ((results.verify is defined and results.verify.status == 'failed') or (results.apply_change is defined and results.apply_change.status == 'failed')) }}"
+    with:
+      interface: "{{ inputs.interface.id }}"
+      snapshot: "{{ results.snapshot.return_value }}"
+      reason: "{{ results.verify.error if (results.verify is defined and results.verify.status == 'failed') else results.apply_change.error }}"
+      apply: "{{ inputs.apply }}"
+  - type: nautobot
+    name: close_out
+    label: Close out (only if verification passed)
+    script: scripts/close_out_interface.py
+    when: "{{ results.verify is defined and results.verify.status == 'success' }}"
+    with:
+      interface: "{{ inputs.interface.id }}"
+      message: "Turned up {{ inputs.interface.name }} on VLAN {{ inputs.vlan_id }}: {{ inputs.description }}. Verified by workflow."
+      apply: "{{ inputs.apply }}"

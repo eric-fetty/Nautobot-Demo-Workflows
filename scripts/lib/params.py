@@ -47,3 +47,38 @@ def as_text(value, default=""):
         return default
     text = str(value).strip()
     return default if text.lower() in ("none", "null") else text
+
+
+def as_dict(value):
+    """Return a dict from a dict or a rendered Python or JSON mapping, such as an earlier step's return_value."""
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    text = str(value).strip()
+    if text.lower() in _EMPTY:
+        return {}
+    try:
+        parsed = ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        import json
+
+        try:
+            parsed = json.loads(text)
+        except ValueError as exc:
+            raise ValueError(f"Expected a mapping, got: {text[:80]!r}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(f"Expected a mapping, got {type(parsed).__name__}")
+    return parsed
+
+
+def as_int(value, default=None):
+    """Return an int from an int or rendered text, or default for empty values."""
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    text = as_text(value)
+    if not text:
+        return default
+    return int(float(text))

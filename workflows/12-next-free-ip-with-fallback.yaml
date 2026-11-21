@@ -1,0 +1,92 @@
+---
+key: 12-next-free-ip-with-fallback
+name: "12. Next free management IP with a fallback prefix"
+description: >
+  Reserve the next free management address for a device from a preferred
+  prefix. If that prefix is full, a fallback step takes an address from a
+  secondary prefix instead. A final step assigns whichever address was
+  reserved as the device's primary IPv4.
+category: Examples
+manual_duration_minutes: 10
+inputs:
+  - key: location
+    label: Location
+    type: object
+    model: dcim.Location
+    required: true
+    filter:
+      query:
+        status__name: Active
+  - key: device
+    label: Device
+    type: object
+    model: dcim.Device
+    required: true
+    depends_on: ["location"]
+    filter:
+      query:
+        location: "{{ inputs.location.id }}"
+  - key: interface
+    label: Management interface
+    type: object
+    model: dcim.Interface
+    required: true
+    depends_on: ["device"]
+    help_text: Usually Management1.
+    filter:
+      query:
+        device_id: "{{ inputs.device.id }}"
+  - key: preferred_prefix
+    label: Preferred management prefix
+    type: object
+    model: ipam.Prefix
+    required: true
+    help_text: The lab seed creates 10.20.255.0/29, which is full on purpose, so the fallback runs.
+  - key: fallback_prefix
+    label: Fallback management prefix
+    type: object
+    model: ipam.Prefix
+    required: true
+    help_text: Used only when the preferred prefix has no free address. The lab seed creates 10.20.254.0/24.
+  - key: simulate_preferred_full
+    label: Treat the preferred prefix as full
+    type: boolean
+    default: false
+    help_text: Turn on to force the fallback path with any preferred prefix.
+  - key: apply
+    label: Apply these changes in Nautobot
+    type: boolean
+    default: false
+    help_text: Leave off to only plan. Turn on to reserve the address and set the device's primary IPv4 in this lab Nautobot. Do not use this in production.
+actions:
+  - type: nautobot
+    name: reserve_primary
+    label: Reserve from the preferred prefix
+    script: scripts/reserve_next_ip.py
+    with:
+      prefix: "{{ inputs.preferred_prefix.id }}"
+      device: "{{ inputs.device.id }}"
+      role: preferred
+      simulate_full: "{{ inputs.simulate_preferred_full }}"
+      apply: "{{ inputs.apply }}"
+  - type: nautobot
+    name: reserve_fallback
+    label: Reserve from the fallback prefix (only if the preferred one failed)
+    script: scripts/reserve_next_ip.py
+    when: "{{ results.reserve_primary is defined and results.reserve_primary.status == 'failed' }}"
+    with:
+      prefix: "{{ inputs.fallback_prefix.id }}"
+      device: "{{ inputs.device.id }}"
+      role: fallback
+      apply: "{{ inputs.apply }}"
+  - type: nautobot
+    name: assign_ip
+    label: Assign the reserved address as primary IPv4
+    script: scripts/assign_primary_ip.py
+    when: "{{ (results.reserve_primary is defined and results.reserve_primary.status == 'success') or (results.reserve_fallback is defined and results.reserve_fallback.status == 'success') }}"
+    with:
+      device: "{{ inputs.device.id }}"
+      interface: "{{ inputs.interface.id }}"
+      address: "{{ results.reserve_primary.return_value.address if results.reserve_primary.status == 'success' else results.reserve_fallback.return_value.address }}"
+      source: "{{ 'reserve_primary' if results.reserve_primary.status == 'success' else 'reserve_fallback' }}"
+      apply: "{{ inputs.apply }}"
